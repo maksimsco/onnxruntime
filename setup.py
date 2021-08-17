@@ -17,9 +17,10 @@ import shlex
 
 ONNXRUNTIME_BUILD_CMD = environ.get('ONNXRUNTIME_BUILD_CMD', None)
 if ONNXRUNTIME_BUILD_CMD is not None:
-    cmd = [sys.executable]
+    cmd = [sys.executable, 'tools/ci_build/build.py', '--config', 'Release', '--update', '--skip_submodule_sync']
     cmd += shlex.split(ONNXRUNTIME_BUILD_CMD)
     cmd.append("--build_dir=.")
+    cmd.append("--update")
     subprocess.run(cmd, cwd='..', check=True)
     subprocess.run(['make', '-j'+os.cpu_count(), 'onnxruntime_pybind11_state'], check=True)
 

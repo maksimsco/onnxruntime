@@ -80,8 +80,8 @@ stages:
         CIBW_MANYLINUX_PYPY_AARCH64_IMAGE: onnxruntimecpubuild_aarch64
         CIBW_SKIP: pp*-manylinux_aarch64 cp310-manylinux2014_aarch64
         CIBW_BEFORE_BUILD: rm -rf Release && cp setup.py Release
-        #TODO: enable LTO for linux
-        ONNXRUNTIME_BUILD_CMD: tools/ci_build/build.py --config Release --update --skip_submodule_sync --enable_pybind
+        #TODO: enable LTO for x86_64
+        ONNXRUNTIME_BUILD_CMD: --enable_pybind
       steps:
       - checkout: self
         clean: true
@@ -929,7 +929,7 @@ stages:
         MACOSX_DEPLOYMENT_TARGET: '10.13'
         CIBW_PROJECT_REQUIRES_PYTHON: ">=3.6, <3.10"
         CIBW_BEFORE_BUILD: python3 -m pip install numpy==1.16.6 && rm -rf Release && cp setup.py Release
-        ONNXRUNTIME_BUILD_CMD: tools/ci_build/build.py --config Release --update   --skip_submodule_sync --parallel --enable_pybind
+        ONNXRUNTIME_BUILD_CMD: --enable_pybind
       steps:
       - checkout: self
         clean: true

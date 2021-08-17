@@ -66,11 +66,13 @@ stages:
             CIBW_ARCHS: x86_64
             ONNXRUNTIME_CFLAGS: '-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -fcf-protection -O3 -Wl,--strip-all'
             ONNXRUNTIME_CXXFLAGS: '-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -fcf-protection -O3 -Wl,--strip-all'
+            ONNXRUNTIME_BUILD_CMD: '--enable_pybind --enable_lto'
           ARCH_aarch64:
             CIBW_ARCHS: aarch64
             #-fcf-protection is not supported on aarch64
             ONNXRUNTIME_CFLAGS: '-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -O3 -Wl,--strip-all'
             ONNXRUNTIME_CXXFLAGS: '-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -O3 -Wl,--strip-all'
+            ONNXRUNTIME_BUILD_CMD: '--enable_pybind'
       variables:
         #TODO: enable LTO for x86_64
         CIBW_ENVIRONMENT: CFLAGS='$(ONNXRUNTIME_CFLAGS)' CXXFLAGS='$(ONNXRUNTIME_CXXFLAGS)' NIGHTLY_BUILD='$(NIGHTLY_BUILD)' BUILD_BUILDNUMBER='$(Build.BuildId)' ONNXRUNTIME_BUILD_CMD='--enable_pybind'
@@ -111,51 +113,50 @@ stages:
         parameters:
           condition: 'succeeded'
 
-    # - job: Linux_CPU_centos8_py_Wheels
-      # timeoutInMinutes: 600
-      # workspace:
-        # clean: all
-      # pool: Linux-CPU
-      # variables:
-        # CIBW_ARCHS: x86_64
-        # ONNXRUNTIME_CFLAGS: '-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -fcf-protection -O3 -Wl,--strip-all'
-        # ONNXRUNTIME_CXXFLAGS: '-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -fcf-protection -O3 -Wl,--strip-all'
-        # CIBW_ENVIRONMENT: CFLAGS='$(ONNXRUNTIME_CFLAGS)' CXXFLAGS='$(ONNXRUNTIME_CXXFLAGS)' NIGHTLY_BUILD='$(NIGHTLY_BUILD)' BUILD_BUILDNUMBER='$(Build.BuildId)'
-        # CIBW_PROJECT_REQUIRES_PYTHON: ">=3.6, <3.10"
-        # CIBW_MANYLINUX_X86_64_IMAGE: onnxruntimecpucentos8build_x86_64
-        # CIBW_MANYLINUX_PYPY_X86_64_IMAGE: onnxruntimecpucentos8build_x86_64
-        # CIBW_SKIP: pp*-manylinux_aarch64 cp310-manylinux2014_aarch64
-        # CIBW_BEFORE_BUILD: tools/ci_build/github/linux/cibw_before_build_$(CIBW_ARCHS).sh
-      # steps:
-      # - checkout: self
-        # clean: true
-        # submodules: recursive
+    - job: Linux_CPU_centos8_py_Wheels
+      timeoutInMinutes: 600
+      workspace:
+        clean: all
+      pool: Linux-CPU
+      variables:
+        CIBW_ARCHS: x86_64
+        ONNXRUNTIME_CFLAGS: '-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -fcf-protection -O3 -Wl,--strip-all'
+        ONNXRUNTIME_CXXFLAGS: '-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -fcf-protection -O3 -Wl,--strip-all'
+        CIBW_ENVIRONMENT: CFLAGS='$(ONNXRUNTIME_CFLAGS)' CXXFLAGS='$(ONNXRUNTIME_CXXFLAGS)' NIGHTLY_BUILD='$(NIGHTLY_BUILD)' BUILD_BUILDNUMBER='$(Build.BuildId)' ONNXRUNTIME_BUILD_CMD='--enable_pybind --enable_lto'
+        CIBW_PROJECT_REQUIRES_PYTHON: ">=3.6, <3.10"
+        CIBW_MANYLINUX_X86_64_IMAGE: onnxruntimecpucentos8build_x86_64
+        CIBW_MANYLINUX_PYPY_X86_64_IMAGE: onnxruntimecpucentos8build_x86_64
+        CIBW_SKIP: pp*-manylinux_aarch64 cp310-manylinux2014_aarch64
+      steps:
+      - checkout: self
+        clean: true
+        submodules: recursive
 
-      # - template: get-docker-image-steps.yml
-        # parameters:
-          # Dockerfile: tools/ci_build/github/linux/docker/inference/$(CIBW_ARCHS)/python/cpu/Dockerfile
-          # Context: tools/ci_build/github/linux/docker/inference/$(CIBW_ARCHS)/python/cpu
-          # Repository: onnxruntimecpucentos8build_$(CIBW_ARCHS)
+      - template: get-docker-image-steps.yml
+        parameters:
+          Dockerfile: tools/ci_build/github/linux/docker/inference/$(CIBW_ARCHS)/python/cpu/Dockerfile
+          Context: tools/ci_build/github/linux/docker/inference/$(CIBW_ARCHS)/python/cpu
+          Repository: onnxruntimecpucentos8build_$(CIBW_ARCHS)
 
-      # - bash: |
-          # set -o errexit
-          # python3 -m pip install --upgrade pip
-          # pip3 install cibuildwheel==2.1.1
-        # displayName: Install dependencies
+      - bash: |
+          set -o errexit
+          python3 -m pip install --upgrade pip
+          pip3 install cibuildwheel==2.1.1
+        displayName: Install dependencies
 
-      # - bash: python3 -m cibuildwheel --output-dir $(Build.ArtifactStagingDirectory) Release
-        # displayName: Build wheels
+      - bash: python3 -m cibuildwheel --output-dir $(Build.ArtifactStagingDirectory)
+        displayName: Build wheels
 
-      # - task: PublishPipelineArtifact@1
-        # displayName: 'Publish Artifact: ONNXRuntime python wheel'
-        # inputs:
-          # artifactName: onnxruntime_linux_centos8cpu_$(CIBW_ARCHS)
-          # artifactType: pipeline
-          # targetPath: '$(Build.ArtifactStagingDirectory)'
+      - task: PublishPipelineArtifact@1
+        displayName: 'Publish Artifact: ONNXRuntime python wheel'
+        inputs:
+          artifactName: onnxruntime_linux_centos8cpu_$(CIBW_ARCHS)
+          artifactType: pipeline
+          targetPath: '$(Build.ArtifactStagingDirectory)'
 
-      # - template: component-governance-component-detection-steps.yml
-        # parameters:
-          # condition: 'succeeded'
+      - template: component-governance-component-detection-steps.yml
+        parameters:
+          condition: 'succeeded'
 
 
   - ${{ if eq(parameters.enable_linux_gpu, true) }}:
@@ -167,12 +168,10 @@ stages:
       variables:
         #TODO: dump BUILD_BUILDNUMBER NIGHTLY_BUILD env vars to a file then restore them in CIBW_BEFORE_BUILD
         CIBW_ARCHS: x86_64
-        CIBW_ENVIRONMENT: CFLAGS='-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -fcf-protection -O3 -Wl,--strip-all' CXXFLAGS='-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -fcf-protection -O3 -Wl,--strip-all' NIGHTLY_BUILD='$(NIGHTLY_BUILD)' BUILD_BUILDNUMBER='$(Build.BuildId)'
+        CIBW_ENVIRONMENT: CFLAGS='-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -fcf-protection -O3 -Wl,--strip-all' CXXFLAGS='-Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -fstack-protector-strong -fstack-clash-protection -fcf-protection -O3 -Wl,--strip-all' NIGHTLY_BUILD='$(NIGHTLY_BUILD)' BUILD_BUILDNUMBER='$(Build.BuildId)'  ONNXRUNTIME_BUILD_CMD='--enable_pybind --enable_lto'
         CIBW_PROJECT_REQUIRES_PYTHON: ">=3.6, <3.10"
         CIBW_MANYLINUX_X86_64_IMAGE: onnxruntimecuda11build
         CIBW_MANYLINUX_PYPY_X86_64_IMAGE: onnxruntimecuda11build
-        #CIBW_SKIP: pp*-manylinux2014_aarch64 cp310-manylinux2014_aarch64
-        CIBW_BEFORE_BUILD: tools/ci_build/github/linux/cibw_before_build_$(CIBW_ARCHS)_gpu.sh
         ONNXRUNTIME_CUDA_VERSION: 11.1
         WHEEL_NAME_SUFFIX: 'gpu'
       steps:
@@ -193,7 +192,7 @@ stages:
           pip3 install cibuildwheel==2.1.1
         displayName: Install dependencies
 
-      - bash: python3 -m cibuildwheel --output-dir $(Build.ArtifactStagingDirectory) Release
+      - bash: python3 -m cibuildwheel --output-dir $(Build.ArtifactStagingDirectory)
         displayName: Build wheels
 
       - task: PublishPipelineArtifact@1
@@ -926,7 +925,7 @@ stages:
         CIBW_ARCHS_MACOS: x86_64 universal2
         MACOSX_DEPLOYMENT_TARGET: '10.13'
         CIBW_PROJECT_REQUIRES_PYTHON: ">=3.6, <3.10"
-        CIBW_BEFORE_BUILD: python3 -m pip install numpy==1.16.6 &&  cp setup.py Release
+        CIBW_BEFORE_BUILD: python3 -m pip install numpy==1.16.6
         ONNXRUNTIME_BUILD_CMD: --enable_pybind --cmake_extra_defines "CMAKE_OSX_ARCHITECTURES=x86_64;arm64"
       steps:
       - checkout: self
@@ -939,7 +938,7 @@ stages:
           pip3 install cibuildwheel==2.1.1
         displayName: Install dependencies
 
-      - bash: python3 -m cibuildwheel --output-dir $(Build.ArtifactStagingDirectory) Release
+      - bash: python3 -m cibuildwheel --output-dir $(Build.ArtifactStagingDirectory)
         displayName: Build wheels
 
       - task: PublishPipelineArtifact@1

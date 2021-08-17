@@ -13,6 +13,15 @@ import platform
 import subprocess
 import sys
 import datetime
+import shlex
+
+ONNXRUNTIME_BUILD_CMD = environ.get('ONNXRUNTIME_BUILD_CMD', None)
+if ONNXRUNTIME_BUILD_CMD is not None:
+    cmd = [sys.executable]
+    cmd += shlex.split(ONNXRUNTIME_BUILD_CMD)
+    cmd.append("--build_dir=.")
+    subprocess.run(cmd, cwd='..', check=True)
+    subprocess.run(['make', '-j'+os.cpu_count(), 'onnxruntime_pybind11_state'], check=True)
 
 nightly_build = environ.get('NIGHTLY_BUILD', None) == '1'
 featurizers_build = False

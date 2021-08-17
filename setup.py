@@ -22,7 +22,7 @@ if ONNXRUNTIME_BUILD_CMD is not None:
     cmd.append("--build_dir=.")
     cmd.append("--update")
     subprocess.run(cmd, check=True)
-    subprocess.run(['make', '-j'+os.cpu_count(), 'onnxruntime_pybind11_state'], check=True)
+    subprocess.run(['make', '-j%d' % os.cpu_count(), 'onnxruntime_pybind11_state'], check=True)
     os.chdir('Release')
 
 nightly_build = environ.get('NIGHTLY_BUILD', None) == '1'

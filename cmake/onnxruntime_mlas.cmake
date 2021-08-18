@@ -1,64 +1,58 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
+set(MLAS_SRC_DIR ${ONNXRUNTIME_ROOT}/core/mlas/lib)
+
 onnxruntime_add_static_library(onnxruntime_mlas 
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/platform.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/threading.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/sgemm.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/qdwconv.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/convolve.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/pooling.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/transpose.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/reorder.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/snchwc.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/activate.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/logistic.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/tanh.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/erf.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/compute.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/quantize.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_default.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/qladd.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/qlmul.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/qpostprocessor.cpp
-  ${ONNXRUNTIME_ROOT}/core/mlas/lib/qlgavgpool.cpp
+  ${MLAS_SRC_DIR}/platform.cpp
+  ${MLAS_SRC_DIR}/threading.cpp
+  ${MLAS_SRC_DIR}/sgemm.cpp
+  ${MLAS_SRC_DIR}/qgemm.cpp
+  ${MLAS_SRC_DIR}/qdwconv.cpp
+  ${MLAS_SRC_DIR}/convolve.cpp
+  ${MLAS_SRC_DIR}/pooling.cpp
+  ${MLAS_SRC_DIR}/transpose.cpp
+  ${MLAS_SRC_DIR}/reorder.cpp
+  ${MLAS_SRC_DIR}/snchwc.cpp
+  ${MLAS_SRC_DIR}/activate.cpp
+  ${MLAS_SRC_DIR}/logistic.cpp
+  ${MLAS_SRC_DIR}/tanh.cpp
+  ${MLAS_SRC_DIR}/erf.cpp
+  ${MLAS_SRC_DIR}/compute.cpp
+  ${MLAS_SRC_DIR}/quantize.cpp
+  ${MLAS_SRC_DIR}/qgemm_kernel_default.cpp
+  ${MLAS_SRC_DIR}/qladd.cpp
+  ${MLAS_SRC_DIR}/qlmul.cpp
+  ${MLAS_SRC_DIR}/qpostprocessor.cpp
+  ${MLAS_SRC_DIR}/qlgavgpool.cpp
 )
 
-if (onnxruntime_BUILD_WEBASSEMBLY)
-  if (onnxruntime_ENABLE_WEBASSEMBLY_SIMD)
-    file(GLOB_RECURSE mlas_platform_srcs
-      "${ONNXRUNTIME_ROOT}/core/mlas/lib/wasm_simd/*.cpp"
-    )
-  else()
-    file(GLOB_RECURSE mlas_platform_srcs
-      "${ONNXRUNTIME_ROOT}/core/mlas/lib/wasm/*.cpp"
-    )
-  endif()
-elseif(MSVC)
+function(setup_mlas_source_for_windows)
+  #The onnxruntime_target_platform variable was added by Windows AI team in onnxruntime_common.cmake
+  #Don't use it for other platforms.
   if((onnxruntime_target_platform STREQUAL "ARM64") OR (onnxruntime_target_platform STREQUAL "ARM64EC"))
     set(PREPROCESS_ARMASM_FLAGS "")
     set(ARMASM_FLAGS "")
 
     if(onnxruntime_target_platform STREQUAL "ARM64")
-      set(mlas_platform_srcs
-        ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_neon.cpp
-        ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_udot.cpp
+      target_sources(onnxruntime_mlas PRIVATE 
+        ${MLAS_SRC_DIR}/qgemm_kernel_neon.cpp
+        ${MLAS_SRC_DIR}/qgemm_kernel_udot.cpp
       )
 
       set(mlas_platform_preprocess_srcs
-        ${ONNXRUNTIME_ROOT}/core/mlas/lib/arm64/QgemmU8X8KernelNeon.asm
-        ${ONNXRUNTIME_ROOT}/core/mlas/lib/arm64/QgemmU8X8KernelUdot.asm
-        ${ONNXRUNTIME_ROOT}/core/mlas/lib/arm64/SgemmKernelNeon.asm
+        ${MLAS_SRC_DIR}/arm64/QgemmU8X8KernelNeon.asm
+        ${MLAS_SRC_DIR}/arm64/QgemmU8X8KernelUdot.asm
+        ${MLAS_SRC_DIR}/arm64/SgemmKernelNeon.asm
       )
     else()
-      set(mlas_platform_srcs
-        ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_neon.cpp
+      target_sources(onnxruntime_mlas PRIVATE 
+        ${MLAS_SRC_DIR}/qgemm_kernel_neon.cpp
       )
 
       set(mlas_platform_preprocess_srcs
-        ${ONNXRUNTIME_ROOT}/core/mlas/lib/arm64ec/QgemmU8X8KernelNeon.asm
-        ${ONNXRUNTIME_ROOT}/core/mlas/lib/arm64ec/SgemmKernelNeon.asm
+        ${MLAS_SRC_DIR}/arm64ec/QgemmU8X8KernelNeon.asm
+        ${MLAS_SRC_DIR}/arm64ec/SgemmKernelNeon.asm
       )
 
       string(APPEND PREPROCESS_ARMASM_FLAGS " /arm64EC")
@@ -87,79 +81,94 @@ elseif(MSVC)
         DEPENDS ${asm_filename}
         BYPRODUCTS ${preprocess_filename}
       )
-      list(APPEND mlas_platform_srcs ${obj_filename})
+      target_sources(onnxruntime_mlas PRIVATE ${obj_filename})
     endforeach()
   elseif(onnxruntime_target_platform STREQUAL "ARM")
-    set(mlas_platform_srcs
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/arm/sgemmc.cpp
+    target_sources(onnxruntime_mlas PRIVATE 
+      ${MLAS_SRC_DIR}/arm/sgemmc.cpp
     )
   elseif(onnxruntime_target_platform STREQUAL "x64")
     enable_language(ASM_MASM)
 
     file(GLOB_RECURSE mlas_platform_srcs_avx CONFIGURE_DEPENDS
-      "${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx/*.cpp"
+      "${MLAS_SRC_DIR}/intrinsics/avx/*.cpp"
     )
     set_source_files_properties(${mlas_platform_srcs_avx} PROPERTIES COMPILE_FLAGS "/arch:AVX")
 
     file(GLOB_RECURSE mlas_platform_srcs_avx2 CONFIGURE_DEPENDS
-      "${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx2/*.cpp"
+      "${MLAS_SRC_DIR}/intrinsics/avx2/*.cpp"
     )
     set_source_files_properties(${mlas_platform_srcs_avx2} PROPERTIES COMPILE_FLAGS "/arch:AVX2")
 
-    set(mlas_platform_srcs
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/dgemm.cpp
+    target_sources(onnxruntime_mlas PRIVATE
+      ${MLAS_SRC_DIR}/dgemm.cpp
       ${mlas_platform_srcs_avx}
       ${mlas_platform_srcs_avx2}
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_avx2.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_sse.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_sse41.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx512/quantize_avx512f.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/QgemmU8S8KernelAvx2.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/QgemmU8U8KernelAvx2.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/QgemmU8X8KernelAvx2.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/QgemmU8X8KernelAvx512Core.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/QgemvU8S8KernelAvx2.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/QgemvU8S8KernelAvx512Core.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/QgemvU8S8KernelAvx512Vnni.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/QgemvU8S8KernelAvxVnni.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/DgemmKernelSse2.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/DgemmKernelAvx.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/DgemmKernelFma3.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/DgemmKernelAvx512F.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SgemmKernelSse2.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SgemmKernelAvx.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SgemmKernelM1Avx.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SgemmKernelFma3.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SgemmKernelAvx512F.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SconvKernelSse2.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SconvKernelAvx.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SconvKernelFma3.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SconvKernelAvx512F.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SpoolKernelSse2.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SpoolKernelAvx.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SpoolKernelAvx512F.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/sgemma.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/cvtfp16a.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/SoftmaxKernelAvx.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/TransKernelFma3.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/TransKernelAvx512F.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/LogisticKernelFma3.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/TanhKernelFma3.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/amd64/ErfKernelFma3.asm
+      ${MLAS_SRC_DIR}/qgemm_kernel_avx2.cpp
+      ${MLAS_SRC_DIR}/qgemm_kernel_sse.cpp
+      ${MLAS_SRC_DIR}/qgemm_kernel_sse41.cpp
+      ${MLAS_SRC_DIR}/intrinsics/avx512/quantize_avx512f.cpp
+      ${MLAS_SRC_DIR}/amd64/QgemmU8S8KernelAvx2.asm
+      ${MLAS_SRC_DIR}/amd64/QgemmU8U8KernelAvx2.asm
+      ${MLAS_SRC_DIR}/amd64/QgemmU8X8KernelAvx2.asm
+      ${MLAS_SRC_DIR}/amd64/QgemmU8X8KernelAvx512Core.asm
+      ${MLAS_SRC_DIR}/amd64/QgemvU8S8KernelAvx2.asm
+      ${MLAS_SRC_DIR}/amd64/QgemvU8S8KernelAvx512Core.asm
+      ${MLAS_SRC_DIR}/amd64/QgemvU8S8KernelAvx512Vnni.asm
+      ${MLAS_SRC_DIR}/amd64/QgemvU8S8KernelAvxVnni.asm
+      ${MLAS_SRC_DIR}/amd64/DgemmKernelSse2.asm
+      ${MLAS_SRC_DIR}/amd64/DgemmKernelAvx.asm
+      ${MLAS_SRC_DIR}/amd64/DgemmKernelFma3.asm
+      ${MLAS_SRC_DIR}/amd64/DgemmKernelAvx512F.asm
+      ${MLAS_SRC_DIR}/amd64/SgemmKernelSse2.asm
+      ${MLAS_SRC_DIR}/amd64/SgemmKernelAvx.asm
+      ${MLAS_SRC_DIR}/amd64/SgemmKernelM1Avx.asm
+      ${MLAS_SRC_DIR}/amd64/SgemmKernelFma3.asm
+      ${MLAS_SRC_DIR}/amd64/SgemmKernelAvx512F.asm
+      ${MLAS_SRC_DIR}/amd64/SconvKernelSse2.asm
+      ${MLAS_SRC_DIR}/amd64/SconvKernelAvx.asm
+      ${MLAS_SRC_DIR}/amd64/SconvKernelFma3.asm
+      ${MLAS_SRC_DIR}/amd64/SconvKernelAvx512F.asm
+      ${MLAS_SRC_DIR}/amd64/SpoolKernelSse2.asm
+      ${MLAS_SRC_DIR}/amd64/SpoolKernelAvx.asm
+      ${MLAS_SRC_DIR}/amd64/SpoolKernelAvx512F.asm
+      ${MLAS_SRC_DIR}/amd64/sgemma.asm
+      ${MLAS_SRC_DIR}/amd64/cvtfp16a.asm
+      ${MLAS_SRC_DIR}/amd64/SoftmaxKernelAvx.asm
+      ${MLAS_SRC_DIR}/amd64/TransKernelFma3.asm
+      ${MLAS_SRC_DIR}/amd64/TransKernelAvx512F.asm
+      ${MLAS_SRC_DIR}/amd64/LogisticKernelFma3.asm
+      ${MLAS_SRC_DIR}/amd64/TanhKernelFma3.asm
+      ${MLAS_SRC_DIR}/amd64/ErfKernelFma3.asm
     )
   else()
     enable_language(ASM_MASM)
 
     set(CMAKE_ASM_MASM_FLAGS "${CMAKE_ASM_MASM_FLAGS} /safeseh")
 
-    set(mlas_platform_srcs
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_sse.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_sse41.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/i386/SgemmKernelSse2.asm
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/i386/SgemmKernelAvx.asm
+    target_sources(onnxruntime_mlas PRIVATE
+      ${MLAS_SRC_DIR}/qgemm_kernel_sse.cpp
+      ${MLAS_SRC_DIR}/qgemm_kernel_sse41.cpp
+      ${MLAS_SRC_DIR}/i386/SgemmKernelSse2.asm
+      ${MLAS_SRC_DIR}/i386/SgemmKernelAvx.asm
     )
   endif()
+endfunction()
+
+if (onnxruntime_BUILD_WEBASSEMBLY)
+  if (onnxruntime_ENABLE_WEBASSEMBLY_SIMD)
+    file(GLOB_RECURSE mlas_platform_srcs
+      "${MLAS_SRC_DIR}/wasm_simd/*.cpp"
+    )
+  else()
+    file(GLOB_RECURSE mlas_platform_srcs
+      "${MLAS_SRC_DIR}/wasm/*.cpp"
+    )
+  endif()
+elseif(MSVC)
+  setup_mlas_source_for_windows()
 else()
+
     if(APPLE)
       get_target_property(ONNXRUNTIME_MLAS_OSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)
 
@@ -216,6 +225,7 @@ else()
           set(X86_64 TRUE)
         endif()
     endif()
+
     if(APPLE)
       get_target_property(ONNXRUNTIME_MLAS_MACOSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)  
     endif()
@@ -227,9 +237,9 @@ else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=neon")
 
         set(mlas_platform_srcs
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch32/QgemmU8X8KernelNeon.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/arm/sgemmc.cpp
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_neon.cpp
+          ${MLAS_SRC_DIR}/aarch32/QgemmU8X8KernelNeon.S
+          ${MLAS_SRC_DIR}/arm/sgemmc.cpp
+          ${MLAS_SRC_DIR}/qgemm_kernel_neon.cpp
         )
         if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
           set(MLAS_SOURCE_IS_NOT_SET 1)
@@ -238,12 +248,12 @@ else()
     if(ARM64 AND MLAS_SOURCE_IS_NOT_SET )
         enable_language(ASM)
         set(mlas_platform_srcs
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/QgemmU8X8KernelNeon.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/QgemmU8X8KernelUdot.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/SgemmKernelNeon.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/SgemvKernelNeon.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_neon.cpp
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_udot.cpp
+          ${MLAS_SRC_DIR}/aarch64/QgemmU8X8KernelNeon.S
+          ${MLAS_SRC_DIR}/aarch64/QgemmU8X8KernelUdot.S
+          ${MLAS_SRC_DIR}/aarch64/SgemmKernelNeon.S
+          ${MLAS_SRC_DIR}/aarch64/SgemvKernelNeon.S
+          ${MLAS_SRC_DIR}/qgemm_kernel_neon.cpp
+          ${MLAS_SRC_DIR}/qgemm_kernel_udot.cpp
         )
         if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
           set(MLAS_SOURCE_IS_NOT_SET 1)
@@ -251,7 +261,7 @@ else()
     endif()
     if(POWER AND MLAS_SOURCE_IS_NOT_SET)
         set(mlas_platform_srcs
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/power/SgemmKernelPower.cpp
+          ${MLAS_SRC_DIR}/power/SgemmKernelPower.cpp
         )
         check_cxx_compiler_flag("-mcpu=power10" HAS_POWER10)
         if(HAS_POWER10)
@@ -279,7 +289,7 @@ else()
               set_source_files_properties(${mlas_common_srcs} PROPERTIES COMPILE_FLAGS "-DPOWER10")
             endif()
             set(mlas_platform_srcs_power10
-              ${ONNXRUNTIME_ROOT}/core/mlas/lib/power/SgemmKernelPOWER10.cpp
+              ${MLAS_SRC_DIR}/power/SgemmKernelPOWER10.cpp
             )
             set_source_files_properties(${mlas_platform_srcs_power10} PROPERTIES COMPILE_FLAGS "-O2 -mcpu=power10")
             set(mlas_platform_srcs
@@ -295,13 +305,13 @@ else()
         enable_language(ASM)
 
         set(mlas_platform_srcs_sse2
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_sse.cpp
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86/SgemmKernelSse2.S
+          ${MLAS_SRC_DIR}/qgemm_kernel_sse.cpp
+          ${MLAS_SRC_DIR}/x86/SgemmKernelSse2.S
         )
         set_source_files_properties(${mlas_platform_srcs_sse2} PROPERTIES COMPILE_FLAGS "-msse2")
 
         set(mlas_platform_srcs_avx
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86/SgemmKernelAvx.S
+          ${MLAS_SRC_DIR}/x86/SgemmKernelAvx.S
         )
         set_source_files_properties(${mlas_platform_srcs_avx} PROPERTIES COMPILE_FLAGS "-mavx")
 
@@ -327,66 +337,66 @@ else()
         # instruction set extension and explicitly set the compiler flag as appropriate.
 
         set(mlas_platform_srcs_sse2
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_sse.cpp
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelSse2.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelSse2.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmTransposePackB16x4Sse2.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelSse2.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SpoolKernelSse2.S
+          ${MLAS_SRC_DIR}/qgemm_kernel_sse.cpp
+          ${MLAS_SRC_DIR}/x86_64/DgemmKernelSse2.S
+          ${MLAS_SRC_DIR}/x86_64/SgemmKernelSse2.S
+          ${MLAS_SRC_DIR}/x86_64/SgemmTransposePackB16x4Sse2.S
+          ${MLAS_SRC_DIR}/x86_64/SconvKernelSse2.S
+          ${MLAS_SRC_DIR}/x86_64/SpoolKernelSse2.S
         )
         set_source_files_properties(${mlas_platform_srcs_sse2} PROPERTIES COMPILE_FLAGS "-msse2")
 
         set(mlas_platform_srcs_avx
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelAvx.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelAvx.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelM1Avx.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelM1TransposeBAvx.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmTransposePackB16x4Avx.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelAvx.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SpoolKernelAvx.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SoftmaxKernelAvx.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx/min_max_elements.cpp
+          ${MLAS_SRC_DIR}/x86_64/DgemmKernelAvx.S
+          ${MLAS_SRC_DIR}/x86_64/SgemmKernelAvx.S
+          ${MLAS_SRC_DIR}/x86_64/SgemmKernelM1Avx.S
+          ${MLAS_SRC_DIR}/x86_64/SgemmKernelM1TransposeBAvx.S
+          ${MLAS_SRC_DIR}/x86_64/SgemmTransposePackB16x4Avx.S
+          ${MLAS_SRC_DIR}/x86_64/SconvKernelAvx.S
+          ${MLAS_SRC_DIR}/x86_64/SpoolKernelAvx.S
+          ${MLAS_SRC_DIR}/x86_64/SoftmaxKernelAvx.S
+          ${MLAS_SRC_DIR}/intrinsics/avx/min_max_elements.cpp
         )
         set_source_files_properties(${mlas_platform_srcs_avx} PROPERTIES COMPILE_FLAGS "-mavx")
 
         set(mlas_platform_srcs_avx2
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8S8KernelAvx2.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvx2.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8U8KernelAvx2.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvxVnni.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8X8KernelAvx2.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelFma3.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelFma3.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelFma3.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/TransKernelFma3.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/LogisticKernelFma3.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/TanhKernelFma3.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/ErfKernelFma3.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx2/qladd_avx2.cpp
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx2/qdwconv_avx2.cpp
+          ${MLAS_SRC_DIR}/x86_64/QgemmU8S8KernelAvx2.S
+          ${MLAS_SRC_DIR}/x86_64/QgemvU8S8KernelAvx2.S
+          ${MLAS_SRC_DIR}/x86_64/QgemmU8U8KernelAvx2.S
+          ${MLAS_SRC_DIR}/x86_64/QgemvU8S8KernelAvxVnni.S
+          ${MLAS_SRC_DIR}/x86_64/QgemmU8X8KernelAvx2.S
+          ${MLAS_SRC_DIR}/x86_64/DgemmKernelFma3.S
+          ${MLAS_SRC_DIR}/x86_64/SgemmKernelFma3.S
+          ${MLAS_SRC_DIR}/x86_64/SconvKernelFma3.S
+          ${MLAS_SRC_DIR}/x86_64/TransKernelFma3.S
+          ${MLAS_SRC_DIR}/x86_64/LogisticKernelFma3.S
+          ${MLAS_SRC_DIR}/x86_64/TanhKernelFma3.S
+          ${MLAS_SRC_DIR}/x86_64/ErfKernelFma3.S
+          ${MLAS_SRC_DIR}/intrinsics/avx2/qladd_avx2.cpp
+          ${MLAS_SRC_DIR}/intrinsics/avx2/qdwconv_avx2.cpp
         )
         set_source_files_properties(${mlas_platform_srcs_avx2} PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
 
         set(mlas_platform_srcs_avx512f
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelAvx512F.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelAvx512F.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelAvx512F.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SpoolKernelAvx512F.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/TransKernelAvx512F.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx512/quantize_avx512f.cpp
+          ${MLAS_SRC_DIR}/x86_64/DgemmKernelAvx512F.S
+          ${MLAS_SRC_DIR}/x86_64/SgemmKernelAvx512F.S
+          ${MLAS_SRC_DIR}/x86_64/SconvKernelAvx512F.S
+          ${MLAS_SRC_DIR}/x86_64/SpoolKernelAvx512F.S
+          ${MLAS_SRC_DIR}/x86_64/TransKernelAvx512F.S
+          ${MLAS_SRC_DIR}/intrinsics/avx512/quantize_avx512f.cpp
         )
         set_source_files_properties(${mlas_platform_srcs_avx512f} PROPERTIES COMPILE_FLAGS "-mavx512f")
 
         set(mlas_platform_srcs_avx512core
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvx512Core.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvx512Vnni.S
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8X8KernelAvx512Core.S
+          ${MLAS_SRC_DIR}/x86_64/QgemvU8S8KernelAvx512Core.S
+          ${MLAS_SRC_DIR}/x86_64/QgemvU8S8KernelAvx512Vnni.S
+          ${MLAS_SRC_DIR}/x86_64/QgemmU8X8KernelAvx512Core.S
         )
         set_source_files_properties(${mlas_platform_srcs_avx512core} PROPERTIES COMPILE_FLAGS "-mavx512bw -mavx512dq -mavx512vl")
 
         set(mlas_platform_srcs
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/dgemm.cpp
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_avx2.cpp
+          ${MLAS_SRC_DIR}/dgemm.cpp
+          ${MLAS_SRC_DIR}/qgemm_kernel_avx2.cpp
           ${mlas_platform_srcs_sse2}
           ${mlas_platform_srcs_avx}
           ${mlas_platform_srcs_avx2}
@@ -397,7 +407,7 @@ else()
 endif()
 
 target_sources(onnxruntime_mlas PRIVATE ${mlas_platform_srcs})
-target_include_directories(onnxruntime_mlas PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${ONNXRUNTIME_ROOT}/core/mlas/lib)
+target_include_directories(onnxruntime_mlas PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${MLAS_SRC_DIR})
 set_target_properties(onnxruntime_mlas PROPERTIES FOLDER "ONNXRuntime")
 if (WIN32)
   target_compile_options(onnxruntime_mlas PRIVATE "/wd6385" "/wd4127")

@@ -159,19 +159,26 @@ elseif(MSVC)
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/i386/SgemmKernelAvx.asm
     )
   endif()
-else()
-  if (CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
-    set(ARM64 TRUE)
-  elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "arm64e")
-    set(ARM64 TRUE)
-  elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "arm")
-    set(ARM TRUE)
-  elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
-    set(X86_64 TRUE)
-  elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "i386")
-    set(X86 TRUE)
+elseif(APPLE)
+  get_target_property(ONNXRUNTIME_MLAS_OSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)
+ 
+  if(NOT ONNXRUNTIME_MLAS_OSX_ARCH)
+     set(ONNXRUNTIME_MLAS_OSX_ARCH ${CMAKE_HOST_SYSTEM_PROCESSOR})
   endif()
-  if (CMAKE_SYSTEM_NAME STREQUAL "Android")
+  foreach(OSX_ARCH ONNXRUNTIME_MLAS_OSX_ARCH)
+	  if (OSX_ARCH STREQUAL "arm64")
+        set(ARM64 TRUE)
+      elseif (OSX_ARCH STREQUAL "arm64e")
+        set(ARM64 TRUE)
+      elseif (OSX_ARCH STREQUAL "arm")
+        set(ARM TRUE)
+      elseif (OSX_ARCH STREQUAL "x86_64")
+        set(X86_64 TRUE)
+      elseif (OSX_ARCH STREQUAL "i386")
+        set(X86 TRUE)
+      endif()
+  endif()
+elseif(ANDROID)  
     if (CMAKE_ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
       set(ARM TRUE)
     elseif (CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
@@ -181,28 +188,33 @@ else()
     elseif (CMAKE_ANDROID_ARCH_ABI STREQUAL "x86")
       set(X86 TRUE)
     endif()
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    set(IOS TRUE)
-  else()
-    execute_process(
-      COMMAND ${CMAKE_C_COMPILER} -dumpmachine
-      OUTPUT_VARIABLE dumpmachine_output
-      ERROR_QUIET
-    )
-    if(dumpmachine_output MATCHES "^arm64.*")
+else()
+    #Linux/FreeBSD/PowerPC/...
+	#The value of CMAKE_SYSTEM_PROCESSOR should be from `uname -m`
+	#Example values:
+	#arm64v8/ubuntu -> aarch64
+	#arm32v6/alpine -> armv7l
+	#arm32v7/centos -> armv7l
+	#ppc64le/debian -> ppc64le
+	#s390x/ubuntu -> s390x
+    #ppc64le/busybox -> ppc64le
+	#arm64v8/ubuntu -> aarch64
+	
+	#chasun: I don't think anyone uses 'arm64'	
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm64.*")
       set(ARM64 TRUE)
-    elseif(dumpmachine_output MATCHES "^arm.*")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm.*")
       set(ARM TRUE)
-    elseif(dumpmachine_output MATCHES "^aarch64.*")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64.*")
       set(ARM64 TRUE)
-    elseif(dumpmachine_output MATCHES "^(powerpc.*|ppc.*)")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc.*|ppc.*)")
       set(POWER TRUE)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(i.86|x86?)$")
       set(X86 TRUE)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64)$")
       set(X86_64 TRUE)
     endif()
-  endif()
+endif()
 
   if(ARM)
     enable_language(ASM)

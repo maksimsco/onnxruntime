@@ -944,4 +944,4 @@ stages:
 
       - template: component-governance-component-detection-steps.yml
         parameters:
-          condition: 'succeeded
+          condition: 'succeeded'

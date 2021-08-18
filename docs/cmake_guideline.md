@@ -31,6 +31,69 @@ On Linux, it matters when one static library references another.
 
 So, in general, please always put them in right order (according to their dependency relationship).
 
+Example:
+
+CMakeLists.txt:
+```cmake
+project(test1 C CXX)
+
+add_library(test1 STATIC test1.c)
+add_library(test2 STATIC test2.c)
+add_executable(test3 main.cpp)
+target_link_libraries(test3 PRIVATE test1 test2)
+```
+
+test1.c:
+```c
+#include <stdio.h>
+
+void foo(){
+  printf("hello foo\n");
+}
+```
+
+test2.c:
+```c
+#include <stdio.h>
+
+extern void foo();
+
+void foo2(){
+  foo();
+  printf("hello foo2\n");
+}
+```
+
+main.cpp
+```c++
+#include <iostream>
+
+extern "C" {
+  extern void foo2();
+}
+
+int main(){
+  foo2();
+  return 0;
+}
+```
+Then when you build the project, it will report
+```
+/usr/bin/ld: libtest2.a(test2.c.o): in function `foo2':
+test2.c:(.text+0xa): undefined reference to `foo'
+collect2: error: ld returned 1 exit status
+```
+But if you change
+```cmake
+target_link_libraries(test3 PRIVATE test1 test2)
+```
+to 
+```cmake
+target_link_libraries(test3 PRIVATE test2 test1)
+```
+It will be fine.
+
+Or if you change the two libraries to shared libs, build will also pass.
 
 # Don't call target\_link\_libraries on static libraries
 You could do it, but please don't.

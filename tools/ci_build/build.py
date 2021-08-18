@@ -326,11 +326,6 @@ def parse_arguments():
         default="arm64" if platform.machine() == "arm64" else "x86_64",
         choices=["arm64", "arm64e", "x86_64"],
         help="Specify the Target specific architectures for macOS and iOS, This is only supported on MacOS")
-    parser.add_argument(
-        "--apple_deploy_target", type=str,
-        help="Specify the minimum version of the target platform "
-        "(e.g. macOS or iOS)"
-        "This is only supported on MacOS")
 
     # WebAssembly build
     parser.add_argument("--build_wasm", action='store_true', help="Build for WebAssembly")
@@ -891,13 +886,10 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
             cmake_args += ["-DANDROID_STL=c++_shared"]
 
     if is_macOS() and not args.android:
-        cmake_args += ["-DCMAKE_OSX_ARCHITECTURES=" + args.osx_arch]
         # since cmake 3.19, it uses the xcode latest buildsystem, which is not supported by this project.
         cmake_verstr = subprocess.check_output(['cmake', '--version']).decode('utf-8').split()[2]
         if args.use_xcode and LooseVersion(cmake_verstr) >= LooseVersion('3.19.0'):
             cmake_args += ["-T", "buildsystem=1"]
-        if args.apple_deploy_target:
-            cmake_args += ["-DCMAKE_OSX_DEPLOYMENT_TARGET=" + args.apple_deploy_target]
         # Code sign the binaries, if the code signing development identity and/or team id are provided
         if args.xcode_code_signing_identity:
             cmake_args += ["-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY=" + args.xcode_code_signing_identity]
@@ -913,15 +905,12 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
             needed_args = [
                 args.use_xcode,
                 args.ios_sysroot,
-                args.apple_deploy_target,
             ]
             arg_names = [
                 "--use_xcode            " +
                 "<need use xcode to cross build iOS on MacOS>",
                 "--ios_sysroot          " +
                 "<the location or name of the macOS platform SDK>",
-                "--apple_deploy_target  " +
-                "<the minimum version of the target platform>",
             ]
             if not all(needed_args):
                 raise BuildError(
@@ -933,7 +922,6 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
                 "-DCMAKE_SYSTEM_NAME=iOS",
                 "-Donnxruntime_BUILD_SHARED_LIB=ON",
                 "-DCMAKE_OSX_SYSROOT=" + args.ios_sysroot,
-                "-DCMAKE_OSX_DEPLOYMENT_TARGET=" + args.apple_deploy_target,
                 # we do not need protoc binary for ios cross build
                 "-Dprotobuf_BUILD_PROTOC_BINARIES=OFF",
                 "-DCMAKE_TOOLCHAIN_FILE=../cmake/onnxruntime_ios.toolchain.cmake"
@@ -1739,19 +1727,10 @@ def run_csharp_tests(source_dir, build_dir, use_cuda, use_openvino, use_tensorrt
     run_subprocess(cmd_args, cwd=csharp_source_dir)
 
 
-def is_cross_compiling_on_apple(args):
-    if not is_macOS():
-        return False
-    if args.ios:
-        return True
-    if args.osx_arch != platform.machine():
-        return True
-    return False
-
 
 def build_protoc_for_host(cmake_path, source_dir, build_dir, args):
     if (args.arm or args.arm64 or args.arm64ec or args.enable_windows_store) and \
-            not (is_windows() or is_cross_compiling_on_apple(args)):
+            not (is_windows()):
         raise BuildError(
             'Currently only support building protoc for Windows host while '
             'cross-compiling for ARM/ARM64/Store')
@@ -1778,11 +1757,6 @@ def build_protoc_for_host(cmake_path, source_dir, build_dir, args):
     elif is_macOS():
         if args.use_xcode:
             cmd_args += ['-G', 'Xcode']
-            # CMake < 3.18 has a bug setting system arch to arm64 (if not specified) for Xcode 12,
-            # protoc for host should be built using host architecture
-            # Explicitly specify the CMAKE_OSX_ARCHITECTURES for x86_64 Mac.
-            cmd_args += ["-DCMAKE_OSX_ARCHITECTURES={}".format(
-                'arm64' if platform.machine() == 'arm64' else 'x86_64')]
 
     run_subprocess(cmd_args, cwd=protoc_build_dir)
     # Build step
@@ -2071,8 +2045,7 @@ def main():
                 os.path.join(SCRIPT_DIR, "wasm", "file_packager.py.patch"),
                 os.path.join(emsdk_dir, "upstream", "emscripten", "tools", "file_packager.py"))
 
-        if (args.android or args.ios or args.enable_windows_store or args.build_wasm
-                or is_cross_compiling_on_apple(args)) and args.path_to_protoc_exe is None:
+        if (args.android or args.ios or args.enable_windows_store or args.build_wasm) and args.path_to_protoc_exe is None:
             # Cross-compiling for Android, iOS, and WebAssembly
             path_to_protoc_exe = build_protoc_for_host(
                 cmake_path, source_dir, build_dir, args)

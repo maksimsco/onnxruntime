@@ -216,7 +216,10 @@ else()
       set(X86_64 TRUE)
     endif()
 endif()
-
+  if(APPLE)
+    get_target_property(ONNXRUNTIME_MLAS_MACOSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)  
+  endif()
+  set(MLAS_SOURCE_IS_NOT_SET 1)
   if(ARM)
     enable_language(ASM)
 
@@ -228,7 +231,10 @@ endif()
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/arm/sgemmc.cpp
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_neon.cpp
     )
-  elseif(ARM64)
+    if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+      set(MLAS_SOURCE_IS_NOT_SET 1)
+    endif()
+  if(ARM64 AND MLAS_SOURCE_IS_NOT_SET )
     enable_language(ASM)
     set(mlas_platform_srcs
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/QgemmU8X8KernelNeon.S
@@ -238,7 +244,11 @@ endif()
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_neon.cpp
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_udot.cpp
     )
-  elseif(POWER)
+    if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+      set(MLAS_SOURCE_IS_NOT_SET 1)
+    endif()
+  endif()
+  if(POWER AND MLAS_SOURCE_IS_NOT_SET)
     set(mlas_platform_srcs
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/power/SgemmKernelPower.cpp
     )
@@ -277,7 +287,11 @@ endif()
         )
       endif()
     endif()
-  elseif(X86)
+    if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+      set(MLAS_SOURCE_IS_NOT_SET 1)
+    endif()
+   endif()    
+   if(X86 AND MLAS_SOURCE_IS_NOT_SET)
     enable_language(ASM)
 
     set(mlas_platform_srcs_sse2
@@ -295,7 +309,11 @@ endif()
       ${mlas_platform_srcs_sse2}
       ${mlas_platform_srcs_avx}
     )
-  elseif(X86_64)
+    if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+      set(MLAS_SOURCE_IS_NOT_SET 1)
+    endif()
+  endif()
+  if(X86_64 AND MLAS_SOURCE_IS_NOT_SET)
     enable_language(ASM)
 
     # Forward the flags for the minimum target platform version from the C

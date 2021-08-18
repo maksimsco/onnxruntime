@@ -434,7 +434,7 @@ endif()
 
 foreach(mlas_target ${ONNXRUNTIME_MLAS_LIBS})
     target_include_directories(${mlas_target} PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${MLAS_SRC_DIR})
-endif()
+endforeach()
 set_target_properties(onnxruntime_mlas PROPERTIES FOLDER "ONNXRuntime")
 if (WIN32)
   target_compile_options(onnxruntime_mlas PRIVATE "/wd6385" "/wd4127")

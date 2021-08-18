@@ -159,7 +159,8 @@ elseif(MSVC)
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/i386/SgemmKernelAvx.asm
     )
   endif()
-elseif(APPLE)
+else()
+  if(APPLE)
   get_target_property(ONNXRUNTIME_MLAS_OSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)
  
   if(NOT ONNXRUNTIME_MLAS_OSX_ARCH)

@@ -162,11 +162,11 @@ elseif(MSVC)
 else()
   if(APPLE)
   get_target_property(ONNXRUNTIME_MLAS_OSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)
- 
+
   if(NOT ONNXRUNTIME_MLAS_OSX_ARCH)
      set(ONNXRUNTIME_MLAS_OSX_ARCH ${CMAKE_HOST_SYSTEM_PROCESSOR})
   endif()
-  foreach(OSX_ARCH ONNXRUNTIME_MLAS_OSX_ARCH)
+  foreach(OSX_ARCH ${ONNXRUNTIME_MLAS_OSX_ARCH})
       if (OSX_ARCH STREQUAL "arm64")
         set(ARM64 TRUE)
       elseif (OSX_ARCH STREQUAL "arm64e")
@@ -230,7 +230,6 @@ endif()
     )
   elseif(ARM64)
     enable_language(ASM)
-
     set(mlas_platform_srcs
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/QgemmU8X8KernelNeon.S
       ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/QgemmU8X8KernelUdot.S

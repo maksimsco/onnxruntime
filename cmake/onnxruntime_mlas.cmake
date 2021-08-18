@@ -229,6 +229,11 @@ else()
     if(APPLE)
       get_target_property(ONNXRUNTIME_MLAS_MACOSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)  
     endif()
+    list(LENGTH ONNXRUNTIME_MLAS_MACOSX_ARCH  ONNXRUNTIME_MLAS_MACOSX_ARCH_LENGH)
+    if(ONNXRUNTIME_MLAS_MACOSX_ARCH_LENGH GREATER 1)
+        set(ONNXRUNTIME_MLAS_MULTI_ARCH TRUE)
+    endif()
+    
     set(MLAS_SOURCE_IS_NOT_SET 1)
     if(ARM)
         enable_language(ASM)
@@ -241,7 +246,7 @@ else()
           ${MLAS_SRC_DIR}/arm/sgemmc.cpp
           ${MLAS_SRC_DIR}/qgemm_kernel_neon.cpp
         )
-        if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+        if(NOT ONNXRUNTIME_MLAS_MULTI_ARCH)
           set(MLAS_SOURCE_IS_NOT_SET 1)
         endif()
     endif()
@@ -255,7 +260,16 @@ else()
           ${MLAS_SRC_DIR}/qgemm_kernel_neon.cpp
           ${MLAS_SRC_DIR}/qgemm_kernel_udot.cpp
         )
-        if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+        if(ONNXRUNTIME_MLAS_MULTI_ARCH)
+          add_library(onnxruntime_mlas_arm64  ${mlas_platform_srcs})
+          onnxruntime_configure_target(onnxruntime_mlas_arm64)
+
+	  #onnxruntime_add_static_library(onnxruntime_mlas_arm64 ${mlas_platform_srcs})
+	  set_target_properties(onnxruntime_mlas_arm64 PROPERTIES OSX_ARCHITECTURES "arm64")
+          target_include_directories(onnxruntime_mlas_arm64 PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${MLAS_SRC_DIR})
+	  #target_sources(onnxruntime_mlas PRIVATE $<TARGET_OBJECTS:onnxruntime_mlas_arm64>)
+	  set(mlas_platform_srcs )
+	else()
           set(MLAS_SOURCE_IS_NOT_SET 1)
         endif()
     endif()
@@ -297,7 +311,8 @@ else()
               ${mlas_platform_srcs_power10}
             )
           endif()
-        if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+	endif()
+        if(NOT ONNXRUNTIME_MLAS_MULTI_ARCH)
           set(MLAS_SOURCE_IS_NOT_SET 1)
         endif()
     endif()    
@@ -319,7 +334,7 @@ else()
           ${mlas_platform_srcs_sse2}
           ${mlas_platform_srcs_avx}
         )
-        if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+        if(NOT ONNXRUNTIME_MLAS_MULTI_ARCH)
           set(MLAS_SOURCE_IS_NOT_SET 1)
         endif()
     endif()
@@ -403,6 +418,20 @@ else()
           ${mlas_platform_srcs_avx512f}
           ${mlas_platform_srcs_avx512core}
         )
+	
+        if(ONNXRUNTIME_MLAS_MULTI_ARCH)
+          add_library(onnxruntime_mlas_x86_64  ${mlas_platform_srcs})
+          onnxruntime_configure_target(onnxruntime_mlas_x86_64)
+
+	  #onnxruntime_add_static_library(onnxruntime_mlas_x86_64 ${mlas_platform_srcs})
+	  set_target_properties(onnxruntime_mlas_x86_64 PROPERTIES OSX_ARCHITECTURES "x86_64")
+          target_include_directories(onnxruntime_mlas_x86_64 PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${MLAS_SRC_DIR})
+	  #target_sources(onnxruntime_mlas PRIVATE $<TARGET_OBJECTS:onnxruntime_mlas_x86_64>)
+	  set(mlas_platform_srcs )
+	else()
+          set(MLAS_SOURCE_IS_NOT_SET 1)
+        endif()
+	
     endif()
 endif()
 

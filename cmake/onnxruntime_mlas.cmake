@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
-set(mlas_common_srcs
+onnxruntime_add_static_library(onnxruntime_mlas 
   ${ONNXRUNTIME_ROOT}/core/mlas/lib/platform.cpp
   ${ONNXRUNTIME_ROOT}/core/mlas/lib/threading.cpp
   ${ONNXRUNTIME_ROOT}/core/mlas/lib/sgemm.cpp
@@ -379,7 +379,7 @@ endif()
   endif()
 endif()
 
-onnxruntime_add_static_library(onnxruntime_mlas ${mlas_common_srcs} ${mlas_platform_srcs})
+target_sources(onnxruntime_mlas PRIVATE ${mlas_platform_srcs})
 target_include_directories(onnxruntime_mlas PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${ONNXRUNTIME_ROOT}/core/mlas/lib)
 set_target_properties(onnxruntime_mlas PROPERTIES FOLDER "ONNXRuntime")
 if (WIN32)

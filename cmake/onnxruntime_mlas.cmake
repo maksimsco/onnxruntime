@@ -27,6 +27,8 @@ onnxruntime_add_static_library(onnxruntime_mlas
   ${MLAS_SRC_DIR}/qlgavgpool.cpp
 )
 
+set(ONNXRUNTIME_MLAS_LIBS onnxruntime_mlas)
+
 function(setup_mlas_source_for_windows)
   #The onnxruntime_target_platform variable was added by Windows AI team in onnxruntime_common.cmake
   #Don't use it for other platforms.
@@ -165,6 +167,7 @@ if (onnxruntime_BUILD_WEBASSEMBLY)
       "${MLAS_SRC_DIR}/wasm/*.cpp"
     )
   endif()
+  target_sources(onnxruntime_mlas PRIVATE ${mlas_platform_srcs})
 elseif(MSVC)
   setup_mlas_source_for_windows()
 else()
@@ -200,17 +203,17 @@ else()
         endif()
     else()
         #Linux/FreeBSD/PowerPC/...
-	    #The value of CMAKE_SYSTEM_PROCESSOR should be from `uname -m`
-	    #Example values:
-	    #arm64v8/ubuntu -> aarch64
-	    #arm32v6/alpine -> armv7l
-	    #arm32v7/centos -> armv7l
-	    #ppc64le/debian -> ppc64le
-	    #s390x/ubuntu -> s390x
+        #The value of CMAKE_SYSTEM_PROCESSOR should be from `uname -m`
+        #Example values:
+        #arm64v8/ubuntu -> aarch64
+        #arm32v6/alpine -> armv7l
+        #arm32v7/centos -> armv7l
+        #ppc64le/debian -> ppc64le
+        #s390x/ubuntu -> s390x
         #ppc64le/busybox -> ppc64le
-	    #arm64v8/ubuntu -> aarch64
-	
-	    #chasun: I don't think anyone uses 'arm64'	
+        #arm64v8/ubuntu -> aarch64
+    
+        #chasun: I don't think anyone uses 'arm64'  
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm64.*")
           set(ARM64 TRUE)
         elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm.*")
@@ -261,15 +264,12 @@ else()
           ${MLAS_SRC_DIR}/qgemm_kernel_udot.cpp
         )
         if(ONNXRUNTIME_MLAS_MULTI_ARCH)
-          add_library(onnxruntime_mlas_arm64  ${mlas_platform_srcs})
-          onnxruntime_configure_target(onnxruntime_mlas_arm64)
 
-	  #onnxruntime_add_static_library(onnxruntime_mlas_arm64 ${mlas_platform_srcs})
-	  set_target_properties(onnxruntime_mlas_arm64 PROPERTIES OSX_ARCHITECTURES "arm64")
-          target_include_directories(onnxruntime_mlas_arm64 PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${MLAS_SRC_DIR})
-	  #target_sources(onnxruntime_mlas PRIVATE $<TARGET_OBJECTS:onnxruntime_mlas_arm64>)
-	  set(mlas_platform_srcs )
-	else()
+        onnxruntime_add_static_library(onnxruntime_mlas_arm64 ${mlas_platform_srcs})
+        set_target_properties(onnxruntime_mlas_arm64 PROPERTIES OSX_ARCHITECTURES "arm64")
+        list(APPEND ONNXRUNTIME_MLAS_LIBS onnxruntime_mlas_arm64)
+        set(mlas_platform_srcs )
+    else()
           set(MLAS_SOURCE_IS_NOT_SET 1)
         endif()
     endif()
@@ -311,7 +311,7 @@ else()
               ${mlas_platform_srcs_power10}
             )
           endif()
-	endif()
+    endif()
         if(NOT ONNXRUNTIME_MLAS_MULTI_ARCH)
           set(MLAS_SOURCE_IS_NOT_SET 1)
         endif()
@@ -418,25 +418,23 @@ else()
           ${mlas_platform_srcs_avx512f}
           ${mlas_platform_srcs_avx512core}
         )
-	
+    
         if(ONNXRUNTIME_MLAS_MULTI_ARCH)
-          add_library(onnxruntime_mlas_x86_64  ${mlas_platform_srcs})
-          onnxruntime_configure_target(onnxruntime_mlas_x86_64)
-
-	  #onnxruntime_add_static_library(onnxruntime_mlas_x86_64 ${mlas_platform_srcs})
-	  set_target_properties(onnxruntime_mlas_x86_64 PROPERTIES OSX_ARCHITECTURES "x86_64")
-          target_include_directories(onnxruntime_mlas_x86_64 PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${MLAS_SRC_DIR})
-	  #target_sources(onnxruntime_mlas PRIVATE $<TARGET_OBJECTS:onnxruntime_mlas_x86_64>)
-	  set(mlas_platform_srcs )
-	else()
+          onnxruntime_add_static_library(onnxruntime_mlas_x86_64 ${mlas_platform_srcs})
+          set_target_properties(onnxruntime_mlas_x86_64 PROPERTIES OSX_ARCHITECTURES "x86_64")
+          list(APPEND ONNXRUNTIME_MLAS_LIBS onnxruntime_mlas_x86_64)
+          set(mlas_platform_srcs )
+        else()
           set(MLAS_SOURCE_IS_NOT_SET 1)
         endif()
-	
+    
     endif()
+    target_sources(onnxruntime_mlas PRIVATE ${mlas_platform_srcs})
 endif()
 
-target_sources(onnxruntime_mlas PRIVATE ${mlas_platform_srcs})
-target_include_directories(onnxruntime_mlas PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${MLAS_SRC_DIR})
+foreach(mlas_target ${ONNXRUNTIME_MLAS_LIBS})
+    target_include_directories(${mlas_target} PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${MLAS_SRC_DIR})
+endif()
 set_target_properties(onnxruntime_mlas PROPERTIES FOLDER "ONNXRuntime")
 if (WIN32)
   target_compile_options(onnxruntime_mlas PRIVATE "/wd6385" "/wd4127")

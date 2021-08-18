@@ -410,8 +410,8 @@ set(onnxruntime_test_framework_libs
   onnxruntime_framework
   onnxruntime_util
   onnxruntime_graph
+  ${ONNXRUNTIME_MLAS_LIBS}
   onnxruntime_common
-  onnxruntime_mlas
   )
 
 set(onnxruntime_test_server_libs
@@ -500,8 +500,8 @@ set(ONNXRUNTIME_TEST_LIBS
     onnxruntime_framework
     onnxruntime_util
     onnxruntime_graph
+    ${ONNXRUNTIME_MLAS_LIBS}
     onnxruntime_common
-    onnxruntime_mlas
     onnxruntime_flatbuffers
 )
 
@@ -838,7 +838,7 @@ if (NOT onnxruntime_ENABLE_TRAINING_TORCH_INTEROP)
     file(GLOB_RECURSE MLAS_BENCH_SOURCE_FILES "${MLAS_BENCH_DIR}/*.cpp" "${MLAS_BENCH_DIR}/*.h")
     onnxruntime_add_executable(onnxruntime_mlas_benchmark ${MLAS_BENCH_SOURCE_FILES})
     target_include_directories(onnxruntime_mlas_benchmark PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc)
-    target_link_libraries(onnxruntime_mlas_benchmark PRIVATE benchmark::benchmark onnxruntime_mlas onnxruntime_common onnxruntime_framework onnxruntime_util)
+    target_link_libraries(onnxruntime_mlas_benchmark PRIVATE benchmark::benchmark onnxruntime_util onnxruntime_framework ${ONNXRUNTIME_MLAS_LIBS} onnxruntime_common)
     if(NOT WIN32)
       target_link_libraries(onnxruntime_mlas_benchmark PRIVATE nsync_cpp)
     endif()

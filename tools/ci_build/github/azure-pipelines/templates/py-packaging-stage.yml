@@ -45,11 +45,6 @@ parameters:
   type: boolean
   default: true
 
-- name: enable_linux_arm
-  displayName: 'Whether Linux ARM package is built.'
-  type: boolean
-  default: true
-
 stages:
 - stage: Python_Packaging
 
@@ -916,61 +911,37 @@ stages:
 
   - ${{ if eq(parameters.enable_mac_cpu, true) }}:
     - job: MacOS_py_Wheels
-      timeoutInMinutes: 90
+      timeoutInMinutes: 300
       workspace:
         clean: all
       pool:
         vmImage: 'macOS-10.15'
       variables:
+        CIBW_ARCHS_MACOS: universal2
         MACOSX_DEPLOYMENT_TARGET: '10.13'
-      strategy:
-        matrix:
-          Python36:
-            PythonVersion: '3.6'
-          Python37:
-            PythonVersion: '3.7'
-          Python38:
-            PythonVersion: '3.8'
-          Python39:
-            PythonVersion: '3.9'
+        CIBW_PROJECT_REQUIRES_PYTHON: ">=3.6, <3.10"
+        CIBW_ENVIRONMENT: CFLAGS='$(ONNXRUNTIME_CFLAGS)' CXXFLAGS='$(ONNXRUNTIME_CXXFLAGS)' NIGHTLY_BUILD='$(NIGHTLY_BUILD)' BUILD_BUILDNUMBER='$(Build.BuildId)' ONNXRUNTIME_BUILD_CMD='--enable_pybind --cmake_extra_defines CMAKE_OSX_ARCHITECTURES="arm64;x86_64"'
+        CIBW_BEFORE_BUILD: python3 -m pip install numpy==1.16.6
       steps:
       - checkout: self
         clean: true
         submodules: recursive
 
-      - task: UsePythonVersion@0
-        displayName: 'Use Python'
-        inputs:
-          versionSpec: $(PythonVersion)
+      - bash: |
+          set -o errexit
+          python3 -m pip install --upgrade pip
+          pip3 install cibuildwheel==2.1.1
+        displayName: Install dependencies
+      - bash: python3 -m cibuildwheel --output-dir $(Build.ArtifactStagingDirectory) Release
+        displayName: Build wheels
 
-      - script: |
-          set -e
-          pushd .
-          cd $(Build.SourcesDirectory)/cmake/external/protobuf
-          cmake ./cmake -DCMAKE_INSTALL_PREFIX=$(Build.BinariesDirectory)/protobuf -DCMAKE_POSITION_INDEPENDENT_CODE=ON -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Relwithdebinfo
-          make -j$(getconf _NPROCESSORS_ONLN)
-          make install
-          popd
-          export PATH=$(Build.BinariesDirectory)/protobuf/bin:$PATH
-          export ONNX_ML=1
-          export CMAKE_ARGS="-DONNX_GEN_PB_TYPE_STUBS=OFF -DONNX_WERROR=OFF"
-          sudo python3 -m pip install -r '$(Build.SourcesDirectory)/tools/ci_build/github/linux/docker/scripts/requirements.txt'
-          sudo xcode-select --switch /Applications/Xcode_12.4.app/Contents/Developer
-          python3 $(Build.SourcesDirectory)/tools/ci_build/build.py --build_dir $(Build.BinariesDirectory) --skip_submodule_sync --parallel --config Release --skip_onnx_tests --build_wheel ${{ parameters.build_py_parameters }}
-        displayName: 'Command Line Script'
-
-      - task: CopyFiles@2
-        displayName: 'Copy Python Wheel to: $(Build.ArtifactStagingDirectory)'
-        inputs:
-          SourceFolder: '$(Build.BinariesDirectory)/Release/dist'
-          Contents: '*.whl'
-          TargetFolder: '$(Build.ArtifactStagingDirectory)'
-
-      - task: PublishBuildArtifacts@1
+      - task: PublishPipelineArtifact@1
         displayName: 'Publish Artifact: ONNXRuntime python wheel'
         inputs:
-          ArtifactName: onnxruntime
+          artifactName: onnxruntime_mac
+          artifactType: pipeline
+          targetPath: '$(Build.ArtifactStagingDirectory)'
 
       - template: component-governance-component-detection-steps.yml
         parameters:
-          condition: 'succeeded'
+          condition: 'succeeded

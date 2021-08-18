@@ -29,6 +29,7 @@ onnxruntime_add_static_library(onnxruntime_mlas
 
 set(ONNXRUNTIME_MLAS_LIBS onnxruntime_mlas)
 
+#TODO: set MASM flags properly
 function(setup_mlas_source_for_windows)
   #The onnxruntime_target_platform variable was added by Windows AI team in onnxruntime_common.cmake
   #Don't use it for other platforms.

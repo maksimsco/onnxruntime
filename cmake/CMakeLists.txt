@@ -75,7 +75,6 @@ option(onnxruntime_USE_NUPHAR "Build with Nuphar" OFF)
 option(onnxruntime_USE_VITISAI "Build with Vitis-AI" OFF)
 option(onnxruntime_USE_TENSORRT "Build with TensorRT support" OFF)
 option(onnxruntime_ENABLE_LTO "Enable link time optimization" OFF)
-option(onnxruntime_CROSS_COMPILING "Cross compiling onnx runtime" OFF)
 option(onnxruntime_GCOV_COVERAGE "Compile with options necessary to run code coverage" OFF)
 
 #It's preferred to turn it OFF when onnxruntime is dynamically linked to PROTOBUF. But Tensort always required the full version of protobuf.
@@ -466,15 +465,6 @@ if(MSVC)
           -DEIGEN_STRONG_INLINE=inline)
 endif()
 
-if(onnxruntime_CROSS_COMPILING)
-  set(CMAKE_CROSSCOMPILING ON)
-  check_cxx_compiler_flag(-Wno-error HAS_NOERROR)
-  if(HAS_NOERROR)
-    string(APPEND CMAKE_CXX_FLAGS " -Wno-error=attributes")
-    string(APPEND CMAKE_C_FLAGS " -Wno-error=attributes")
-  endif()
-endif()
-
 # Mark symbols to be invisible, for macOS/iOS target only
 # Due to many dependencies have different symbol visibility settings, set global compile flags here.
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin|iOS")
@@ -600,16 +590,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstack-protector-strong")
 endif()
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "iOSCross")
-    #For ios compliance
-    message("Adding flags for ios builds")
-    if (CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
-      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -target arm64-apple-darwin-macho")
-    elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "arm")
-      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -target armv7a-apple-darwin-macho")
-    endif()
-endif()
-
 #Dependencies begin
 if (onnxruntime_BUILD_UNIT_TESTS)
   if(onnxruntime_PREFER_SYSTEM_LIB)
@@ -643,10 +623,6 @@ endif()
 set(ENABLE_DATE_TESTING  OFF CACHE BOOL "" FORCE)
 set(USE_SYSTEM_TZ_DB  ON CACHE BOOL "" FORCE)
 set(RE2_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-
-if(CMAKE_CROSSCOMPILING)
-  message("Doing crosscompiling")
-endif()
 
 #Need python to generate def file
 if(onnxruntime_BUILD_SHARED_LIB OR onnxruntime_ENABLE_PYTHON)
@@ -1086,7 +1062,7 @@ function(onnxruntime_set_compile_flags target_name)
       endif()
 
       target_compile_definitions(${target_name} PUBLIC -DNSYNC_ATOMIC_CPP11)
-      if(APPLE AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "iOSCross" AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "iOS")
+      if(APPLE AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "iOS")
         target_compile_definitions(${target_name} PUBLIC -Doptional_CONFIG_SELECT_OPTIONAL=optional_OPTIONAL_NONSTD)
       endif()
       target_include_directories(${target_name} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/external/nsync/public")
@@ -1141,7 +1117,7 @@ endfunction()
 
 #For plugins that are not linked into other targets but may be loaded dynamically at runtime using dlopen-like functionality.
 function(onnxruntime_add_shared_library_module target_name)
-  if ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin") OR (${CMAKE_SYSTEM_NAME} MATCHES "iOSCross") OR (${CMAKE_SYSTEM_NAME} MATCHES "iOS"))
+  if ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin") OR (${CMAKE_SYSTEM_NAME} MATCHES "iOS"))
     add_library(${target_name} SHARED ${ARGN})
   else()
     #On Windows, this target shouldn't generate an import lib, but I don't know how to disable it.
@@ -1152,9 +1128,6 @@ function(onnxruntime_add_shared_library_module target_name)
 endfunction()
 
 function(onnxruntime_add_executable target_name)
-  if(${CMAKE_SYSTEM_NAME} MATCHES "iOSCross")
-    message(FATAL_ERROR "iOS doesn't support commmand line tool")
-  endif()
   add_executable(${target_name} ${ARGN})
   onnxruntime_configure_target(${target_name})
 endfunction()

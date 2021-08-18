@@ -181,7 +181,7 @@ else()
     elseif (CMAKE_ANDROID_ARCH_ABI STREQUAL "x86")
       set(X86 TRUE)
     endif()
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR CMAKE_SYSTEM_NAME STREQUAL "iOSCross")
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(IOS TRUE)
   else()
     execute_process(

@@ -311,14 +311,7 @@ def parse_arguments():
     parser.add_argument("--ios", action='store_true', help="build for ios")
     parser.add_argument(
         "--ios_sysroot", default="",
-        help="Specify the location name of the macOS platform SDK to be used")
-    parser.add_argument(
-        "--ios_toolchain_dir", default="",
-        help="Path to ios toolchain binaries")
-    parser.add_argument(
-        "--ios_toolchain_file", default="",
-        help="Path to ios toolchain file, "
-        "or cmake/onnxruntime_ios.toolchain.cmake will be used")
+        help="Specify the location name of the macOS platform SDK to be used")    
     parser.add_argument(
         "--xcode_code_signing_team_id", default="",
         help="The development team ID used for code signing in Xcode")
@@ -730,9 +723,6 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
         # set vars for migraphx
         "-Donnxruntime_USE_MIGRAPHX=" + ("ON" if args.use_migraphx else "OFF"),
         "-Donnxruntime_MIGRAPHX_HOME=" + (migraphx_home if args.use_migraphx else ""),
-        # By default - we currently support only cross compiling for ARM/ARM64
-        # (no native compilation supported through this script).
-        "-Donnxruntime_CROSS_COMPILING=" + ("ON" if args.arm64 or args.arm64ec or args.arm else "OFF"),
         "-Donnxruntime_DISABLE_CONTRIB_OPS=" + ("ON" if args.disable_contrib_ops else "OFF"),
         "-Donnxruntime_DISABLE_ML_OPS=" + ("ON" if args.disable_ml_ops else "OFF"),
         "-Donnxruntime_DISABLE_RTTI=" + ("ON" if args.disable_rtti else "OFF"),
@@ -790,6 +780,12 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
     # It should be default ON in CI build pipelines, and OFF in packaging pipelines.
     # And OFF for the people who are not actively developing onnx runtime.
     add_cmake_define_without_override(cmake_extra_defines, "onnxruntime_DEV_MODE", use_dev_mode(args))
+    
+    if args.arm64 or args.arm64ec or args.arm:
+        # In most cases, we don't need to manually set this variable.
+        # Please refer https://cmake.org/cmake/help/latest/manual/cmake-toolchains.7.html
+        add_cmake_define_without_override(cmake_extra_defines, "CMAKE_CROSSCOMPILING", "ON")
+
     if args.use_cuda:
         add_cmake_define_without_override(cmake_extra_defines, "onnxruntime_USE_CUDA", "ON")
         add_cmake_define_without_override(cmake_extra_defines, "onnxruntime_CUDA_VERSION", args.cuda_version)
@@ -914,7 +910,6 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
         cmake_args += ["-Donnxruntime_USE_COREML=ON"]
 
     if args.ios:
-        if is_macOS():
             needed_args = [
                 args.use_xcode,
                 args.ios_sysroot,
@@ -941,49 +936,7 @@ def generate_build_tree(cmake_path, source_dir, build_dir, cuda_home, cudnn_home
                 "-DCMAKE_OSX_DEPLOYMENT_TARGET=" + args.apple_deploy_target,
                 # we do not need protoc binary for ios cross build
                 "-Dprotobuf_BUILD_PROTOC_BINARIES=OFF",
-                "-DCMAKE_TOOLCHAIN_FILE=" + (
-                    args.ios_toolchain_file if args.ios_toolchain_file
-                    else "../cmake/onnxruntime_ios.toolchain.cmake")
-            ]
-        else:
-            # TODO: the cross compiling on Linux is not officially supported by Apple
-            #   and is already broken with the latest codebase, so it should be removed.
-            # We are cross compiling on Linux
-            needed_args = [
-                args.ios_sysroot,
-                args.arm64 or args.arm,
-                args.ios_toolchain_dir
-            ]
-            arg_names = [
-                "--ios_sysroot <path to sysroot>",
-                "--arm or --arm64",
-                "--ios_toolchain_dir <path to toolchain>"
-            ]
-            if not all(needed_args):
-                raise BuildError(
-                    "iOS build canceled due to missing arguments: " +
-                    ', '.join(
-                        val for val, cond in zip(arg_names, needed_args)
-                        if not cond))
-            compilers = sorted(
-                glob.glob(args.ios_toolchain_dir + "/bin/*-clang*"))
-            os.environ["PATH"] = os.path.join(
-                args.ios_toolchain_dir, "bin") + os.pathsep + os.environ.get(
-                    "PATH", "")
-            os.environ["LD_LIBRARY_PATH"] = os.path.join(
-                args.ios_toolchain_dir, "/lib") + os.pathsep + os.environ.get(
-                    "LD_LIBRARY_PATH", "")
-            if len(compilers) != 2:
-                raise BuildError(
-                    "error identifying compilers in ios_toolchain_dir")
-            cmake_args += [
-                "-DCMAKE_OSX_ARCHITECTURES=" +
-                ("arm64" if args.arm64 else "arm"),
-                "-DCMAKE_SYSTEM_NAME=iOSCross",
-                "-Donnxruntime_BUILD_UNIT_TESTS=OFF",
-                "-DCMAKE_OSX_SYSROOT=" + args.ios_sysroot,
-                "-DCMAKE_C_COMPILER=" + compilers[0],
-                "-DCMAKE_CXX_COMPILER=" + compilers[1]
+                "-DCMAKE_TOOLCHAIN_FILE=../cmake/onnxruntime_ios.toolchain.cmake"
             ]
 
     if args.build_wasm:
@@ -1801,7 +1754,7 @@ def build_protoc_for_host(cmake_path, source_dir, build_dir, args):
             not (is_windows() or is_cross_compiling_on_apple(args)):
         raise BuildError(
             'Currently only support building protoc for Windows host while '
-            'cross-compiling for ARM/ARM64/Store and linux cross-compiling iOS')
+            'cross-compiling for ARM/ARM64/Store')
 
     log.info(
         "Building protoc for host to be used in cross-compiled build process")

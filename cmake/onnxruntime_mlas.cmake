@@ -160,240 +160,240 @@ elseif(MSVC)
     )
   endif()
 else()
-  if(APPLE)
-  get_target_property(ONNXRUNTIME_MLAS_OSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)
+    if(APPLE)
+      get_target_property(ONNXRUNTIME_MLAS_OSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)
 
-  if(NOT ONNXRUNTIME_MLAS_OSX_ARCH)
-     set(ONNXRUNTIME_MLAS_OSX_ARCH ${CMAKE_HOST_SYSTEM_PROCESSOR})
-  endif()
-  foreach(OSX_ARCH ${ONNXRUNTIME_MLAS_OSX_ARCH})
-      if (OSX_ARCH STREQUAL "arm64")
-        set(ARM64 TRUE)
-      elseif (OSX_ARCH STREQUAL "arm64e")
-        set(ARM64 TRUE)
-      elseif (OSX_ARCH STREQUAL "arm")
-        set(ARM TRUE)
-      elseif (OSX_ARCH STREQUAL "x86_64")
-        set(X86_64 TRUE)
-      elseif (OSX_ARCH STREQUAL "i386")
-        set(X86 TRUE)
+      if(NOT ONNXRUNTIME_MLAS_OSX_ARCH)
+         set(ONNXRUNTIME_MLAS_OSX_ARCH ${CMAKE_HOST_SYSTEM_PROCESSOR})
       endif()
-  endforeach()
-elseif(ANDROID)  
-    if (CMAKE_ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
-      set(ARM TRUE)
-    elseif (CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
-      set(ARM64 TRUE)
-    elseif (CMAKE_ANDROID_ARCH_ABI STREQUAL "x86_64")
-      set(X86_64 TRUE)
-    elseif (CMAKE_ANDROID_ARCH_ABI STREQUAL "x86")
-      set(X86 TRUE)
-    endif()
-else()
-    #Linux/FreeBSD/PowerPC/...
-	#The value of CMAKE_SYSTEM_PROCESSOR should be from `uname -m`
-	#Example values:
-	#arm64v8/ubuntu -> aarch64
-	#arm32v6/alpine -> armv7l
-	#arm32v7/centos -> armv7l
-	#ppc64le/debian -> ppc64le
-	#s390x/ubuntu -> s390x
-    #ppc64le/busybox -> ppc64le
-	#arm64v8/ubuntu -> aarch64
-	
-	#chasun: I don't think anyone uses 'arm64'	
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm64.*")
-      set(ARM64 TRUE)
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm.*")
-      set(ARM TRUE)
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64.*")
-      set(ARM64 TRUE)
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc.*|ppc.*)")
-      set(POWER TRUE)
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(i.86|x86?)$")
-      set(X86 TRUE)
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64)$")
-      set(X86_64 TRUE)
-    endif()
-endif()
-  if(APPLE)
-    get_target_property(ONNXRUNTIME_MLAS_MACOSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)  
-  endif()
-  set(MLAS_SOURCE_IS_NOT_SET 1)
-  if(ARM)
-    enable_language(ASM)
-
-    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -mfpu=neon")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=neon")
-
-    set(mlas_platform_srcs
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch32/QgemmU8X8KernelNeon.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/arm/sgemmc.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_neon.cpp
-    )
-    if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
-      set(MLAS_SOURCE_IS_NOT_SET 1)
-    endif()
-  if(ARM64 AND MLAS_SOURCE_IS_NOT_SET )
-    enable_language(ASM)
-    set(mlas_platform_srcs
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/QgemmU8X8KernelNeon.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/QgemmU8X8KernelUdot.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/SgemmKernelNeon.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/SgemvKernelNeon.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_neon.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_udot.cpp
-    )
-    if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
-      set(MLAS_SOURCE_IS_NOT_SET 1)
-    endif()
-  endif()
-  if(POWER AND MLAS_SOURCE_IS_NOT_SET)
-    set(mlas_platform_srcs
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/power/SgemmKernelPower.cpp
-    )
-    check_cxx_compiler_flag("-mcpu=power10" HAS_POWER10)
-    if(HAS_POWER10)
-      set(CMAKE_REQUIRED_FLAGS "-mcpu=power10")
-      check_cxx_source_compiles("
-        #include <altivec.h>
-        int main() {
-          __vector_quad acc0;
-          __builtin_mma_xxsetaccz (&acc0);
-          return 0;
-        }"
-        COMPILES_P10
-      )
-      if(COMPILES_P10)
-        check_cxx_source_compiles("
-          #include <sys/auxv.h>
-          int main() {
-            unsigned long hwcap2 = getauxval(AT_HWCAP2);
-            bool HasP10 = ((hwcap2 & PPC_FEATURE2_MMA) && (hwcap2 & PPC_FEATURE2_ARCH_3_1));
-            return 0;
-          }"
-          HAS_P10_RUNTIME
-        )
-        if (HAS_P10_RUNTIME)
-          set_source_files_properties(${mlas_common_srcs} PROPERTIES COMPILE_FLAGS "-DPOWER10")
+      foreach(OSX_ARCH ${ONNXRUNTIME_MLAS_OSX_ARCH})
+          if (OSX_ARCH STREQUAL "arm64")
+            set(ARM64 TRUE)
+          elseif (OSX_ARCH STREQUAL "arm64e")
+            set(ARM64 TRUE)
+          elseif (OSX_ARCH STREQUAL "arm")
+            set(ARM TRUE)
+          elseif (OSX_ARCH STREQUAL "x86_64")
+            set(X86_64 TRUE)
+          elseif (OSX_ARCH STREQUAL "i386")
+            set(X86 TRUE)
+          endif()
+      endforeach()
+    elseif(ANDROID)  
+        if (CMAKE_ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")
+          set(ARM TRUE)
+        elseif (CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
+          set(ARM64 TRUE)
+        elseif (CMAKE_ANDROID_ARCH_ABI STREQUAL "x86_64")
+          set(X86_64 TRUE)
+        elseif (CMAKE_ANDROID_ARCH_ABI STREQUAL "x86")
+          set(X86 TRUE)
         endif()
-        set(mlas_platform_srcs_power10
-          ${ONNXRUNTIME_ROOT}/core/mlas/lib/power/SgemmKernelPOWER10.cpp
-        )
-        set_source_files_properties(${mlas_platform_srcs_power10} PROPERTIES COMPILE_FLAGS "-O2 -mcpu=power10")
+    else()
+        #Linux/FreeBSD/PowerPC/...
+	    #The value of CMAKE_SYSTEM_PROCESSOR should be from `uname -m`
+	    #Example values:
+	    #arm64v8/ubuntu -> aarch64
+	    #arm32v6/alpine -> armv7l
+	    #arm32v7/centos -> armv7l
+	    #ppc64le/debian -> ppc64le
+	    #s390x/ubuntu -> s390x
+        #ppc64le/busybox -> ppc64le
+	    #arm64v8/ubuntu -> aarch64
+	
+	    #chasun: I don't think anyone uses 'arm64'	
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm64.*")
+          set(ARM64 TRUE)
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm.*")
+          set(ARM TRUE)
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64.*")
+          set(ARM64 TRUE)
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc.*|ppc.*)")
+          set(POWER TRUE)
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(i.86|x86?)$")
+          set(X86 TRUE)
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64)$")
+          set(X86_64 TRUE)
+        endif()
+    endif()
+    if(APPLE)
+      get_target_property(ONNXRUNTIME_MLAS_MACOSX_ARCH onnxruntime_mlas OSX_ARCHITECTURES)  
+    endif()
+    set(MLAS_SOURCE_IS_NOT_SET 1)
+    if(ARM)
+        enable_language(ASM)
+
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -mfpu=neon")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=neon")
+
         set(mlas_platform_srcs
-          ${mlas_platform_srcs}
-          ${mlas_platform_srcs_power10}
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch32/QgemmU8X8KernelNeon.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/arm/sgemmc.cpp
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_neon.cpp
         )
-      endif()
+        if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+          set(MLAS_SOURCE_IS_NOT_SET 1)
+        endif()
     endif()
-    if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
-      set(MLAS_SOURCE_IS_NOT_SET 1)
+    if(ARM64 AND MLAS_SOURCE_IS_NOT_SET )
+        enable_language(ASM)
+        set(mlas_platform_srcs
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/QgemmU8X8KernelNeon.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/QgemmU8X8KernelUdot.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/SgemmKernelNeon.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/aarch64/SgemvKernelNeon.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_neon.cpp
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_udot.cpp
+        )
+        if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+          set(MLAS_SOURCE_IS_NOT_SET 1)
+        endif()
     endif()
-   endif()    
-   if(X86 AND MLAS_SOURCE_IS_NOT_SET)
-    enable_language(ASM)
+    if(POWER AND MLAS_SOURCE_IS_NOT_SET)
+        set(mlas_platform_srcs
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/power/SgemmKernelPower.cpp
+        )
+        check_cxx_compiler_flag("-mcpu=power10" HAS_POWER10)
+        if(HAS_POWER10)
+          set(CMAKE_REQUIRED_FLAGS "-mcpu=power10")
+          check_cxx_source_compiles("
+            #include <altivec.h>
+            int main() {
+              __vector_quad acc0;
+              __builtin_mma_xxsetaccz (&acc0);
+              return 0;
+            }"
+            COMPILES_P10
+          )
+          if(COMPILES_P10)
+            check_cxx_source_compiles("
+              #include <sys/auxv.h>
+              int main() {
+                unsigned long hwcap2 = getauxval(AT_HWCAP2);
+                bool HasP10 = ((hwcap2 & PPC_FEATURE2_MMA) && (hwcap2 & PPC_FEATURE2_ARCH_3_1));
+                return 0;
+              }"
+              HAS_P10_RUNTIME
+            )
+            if (HAS_P10_RUNTIME)
+              set_source_files_properties(${mlas_common_srcs} PROPERTIES COMPILE_FLAGS "-DPOWER10")
+            endif()
+            set(mlas_platform_srcs_power10
+              ${ONNXRUNTIME_ROOT}/core/mlas/lib/power/SgemmKernelPOWER10.cpp
+            )
+            set_source_files_properties(${mlas_platform_srcs_power10} PROPERTIES COMPILE_FLAGS "-O2 -mcpu=power10")
+            set(mlas_platform_srcs
+              ${mlas_platform_srcs}
+              ${mlas_platform_srcs_power10}
+            )
+          endif()
+        if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+          set(MLAS_SOURCE_IS_NOT_SET 1)
+        endif()
+    endif()    
+    if(X86 AND MLAS_SOURCE_IS_NOT_SET)
+        enable_language(ASM)
 
-    set(mlas_platform_srcs_sse2
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_sse.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86/SgemmKernelSse2.S
-    )
-    set_source_files_properties(${mlas_platform_srcs_sse2} PROPERTIES COMPILE_FLAGS "-msse2")
+        set(mlas_platform_srcs_sse2
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_sse.cpp
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86/SgemmKernelSse2.S
+        )
+        set_source_files_properties(${mlas_platform_srcs_sse2} PROPERTIES COMPILE_FLAGS "-msse2")
 
-    set(mlas_platform_srcs_avx
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86/SgemmKernelAvx.S
-    )
-    set_source_files_properties(${mlas_platform_srcs_avx} PROPERTIES COMPILE_FLAGS "-mavx")
+        set(mlas_platform_srcs_avx
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86/SgemmKernelAvx.S
+        )
+        set_source_files_properties(${mlas_platform_srcs_avx} PROPERTIES COMPILE_FLAGS "-mavx")
 
-    set(mlas_platform_srcs
-      ${mlas_platform_srcs_sse2}
-      ${mlas_platform_srcs_avx}
-    )
-    if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
-      set(MLAS_SOURCE_IS_NOT_SET 1)
+        set(mlas_platform_srcs
+          ${mlas_platform_srcs_sse2}
+          ${mlas_platform_srcs_avx}
+        )
+        if(NOT ONNXRUNTIME_MLAS_MACOSX_ARCH)
+          set(MLAS_SOURCE_IS_NOT_SET 1)
+        endif()
     endif()
-  endif()
-  if(X86_64 AND MLAS_SOURCE_IS_NOT_SET)
-    enable_language(ASM)
+    if(X86_64 AND MLAS_SOURCE_IS_NOT_SET)
+        enable_language(ASM)
 
-    # Forward the flags for the minimum target platform version from the C
-    # compiler to the assembler. This works around CMakeASMCompiler.cmake.in
-    # not including the logic to set this flag for the assembler.
-    set(CMAKE_ASM${ASM_DIALECT}_OSX_DEPLOYMENT_TARGET_FLAG "${CMAKE_C_OSX_DEPLOYMENT_TARGET_FLAG}")
+        # Forward the flags for the minimum target platform version from the C
+        # compiler to the assembler. This works around CMakeASMCompiler.cmake.in
+        # not including the logic to set this flag for the assembler.
+        set(CMAKE_ASM${ASM_DIALECT}_OSX_DEPLOYMENT_TARGET_FLAG "${CMAKE_C_OSX_DEPLOYMENT_TARGET_FLAG}")
 
-    # The LLVM assembler does not support the .arch directive to enable instruction
-    # set extensions and also doesn't support AVX-512F instructions without
-    # turning on support via command-line option. Group the sources by the
-    # instruction set extension and explicitly set the compiler flag as appropriate.
+        # The LLVM assembler does not support the .arch directive to enable instruction
+        # set extensions and also doesn't support AVX-512F instructions without
+        # turning on support via command-line option. Group the sources by the
+        # instruction set extension and explicitly set the compiler flag as appropriate.
 
-    set(mlas_platform_srcs_sse2
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_sse.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelSse2.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelSse2.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmTransposePackB16x4Sse2.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelSse2.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SpoolKernelSse2.S
-    )
-    set_source_files_properties(${mlas_platform_srcs_sse2} PROPERTIES COMPILE_FLAGS "-msse2")
+        set(mlas_platform_srcs_sse2
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_sse.cpp
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelSse2.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelSse2.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmTransposePackB16x4Sse2.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelSse2.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SpoolKernelSse2.S
+        )
+        set_source_files_properties(${mlas_platform_srcs_sse2} PROPERTIES COMPILE_FLAGS "-msse2")
 
-    set(mlas_platform_srcs_avx
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelAvx.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelAvx.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelM1Avx.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelM1TransposeBAvx.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmTransposePackB16x4Avx.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelAvx.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SpoolKernelAvx.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SoftmaxKernelAvx.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx/min_max_elements.cpp
-    )
-    set_source_files_properties(${mlas_platform_srcs_avx} PROPERTIES COMPILE_FLAGS "-mavx")
+        set(mlas_platform_srcs_avx
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelAvx.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelAvx.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelM1Avx.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelM1TransposeBAvx.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmTransposePackB16x4Avx.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelAvx.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SpoolKernelAvx.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SoftmaxKernelAvx.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx/min_max_elements.cpp
+        )
+        set_source_files_properties(${mlas_platform_srcs_avx} PROPERTIES COMPILE_FLAGS "-mavx")
 
-    set(mlas_platform_srcs_avx2
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8S8KernelAvx2.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvx2.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8U8KernelAvx2.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvxVnni.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8X8KernelAvx2.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelFma3.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelFma3.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelFma3.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/TransKernelFma3.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/LogisticKernelFma3.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/TanhKernelFma3.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/ErfKernelFma3.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx2/qladd_avx2.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx2/qdwconv_avx2.cpp
-    )
-    set_source_files_properties(${mlas_platform_srcs_avx2} PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
+        set(mlas_platform_srcs_avx2
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8S8KernelAvx2.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvx2.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8U8KernelAvx2.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvxVnni.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8X8KernelAvx2.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelFma3.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelFma3.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelFma3.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/TransKernelFma3.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/LogisticKernelFma3.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/TanhKernelFma3.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/ErfKernelFma3.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx2/qladd_avx2.cpp
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx2/qdwconv_avx2.cpp
+        )
+        set_source_files_properties(${mlas_platform_srcs_avx2} PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
 
-    set(mlas_platform_srcs_avx512f
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelAvx512F.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelAvx512F.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelAvx512F.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SpoolKernelAvx512F.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/TransKernelAvx512F.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx512/quantize_avx512f.cpp
-    )
-    set_source_files_properties(${mlas_platform_srcs_avx512f} PROPERTIES COMPILE_FLAGS "-mavx512f")
+        set(mlas_platform_srcs_avx512f
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/DgemmKernelAvx512F.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SgemmKernelAvx512F.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SconvKernelAvx512F.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/SpoolKernelAvx512F.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/TransKernelAvx512F.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/intrinsics/avx512/quantize_avx512f.cpp
+        )
+        set_source_files_properties(${mlas_platform_srcs_avx512f} PROPERTIES COMPILE_FLAGS "-mavx512f")
 
-    set(mlas_platform_srcs_avx512core
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvx512Core.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvx512Vnni.S
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8X8KernelAvx512Core.S
-    )
-    set_source_files_properties(${mlas_platform_srcs_avx512core} PROPERTIES COMPILE_FLAGS "-mavx512bw -mavx512dq -mavx512vl")
+        set(mlas_platform_srcs_avx512core
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvx512Core.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemvU8S8KernelAvx512Vnni.S
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/x86_64/QgemmU8X8KernelAvx512Core.S
+        )
+        set_source_files_properties(${mlas_platform_srcs_avx512core} PROPERTIES COMPILE_FLAGS "-mavx512bw -mavx512dq -mavx512vl")
 
-    set(mlas_platform_srcs
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/dgemm.cpp
-      ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_avx2.cpp
-      ${mlas_platform_srcs_sse2}
-      ${mlas_platform_srcs_avx}
-      ${mlas_platform_srcs_avx2}
-      ${mlas_platform_srcs_avx512f}
-      ${mlas_platform_srcs_avx512core}
-    )
-  endif()
+        set(mlas_platform_srcs
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/dgemm.cpp
+          ${ONNXRUNTIME_ROOT}/core/mlas/lib/qgemm_kernel_avx2.cpp
+          ${mlas_platform_srcs_sse2}
+          ${mlas_platform_srcs_avx}
+          ${mlas_platform_srcs_avx2}
+          ${mlas_platform_srcs_avx512f}
+          ${mlas_platform_srcs_avx512core}
+        )
+    endif()
 endif()
 
 target_sources(onnxruntime_mlas PRIVATE ${mlas_platform_srcs})

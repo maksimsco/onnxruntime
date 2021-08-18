@@ -881,7 +881,7 @@ if (NOT onnxruntime_ENABLE_TRAINING_TORCH_INTEROP)
             flatbuffers
             onnxruntime_graph
             onnxruntime_common
-            onnxruntime_mlas
+            ${ONNXRUNTIME_MLAS_LIBS}
             onnx
             onnx_proto
             ${PROTOBUF_LIB}
@@ -1085,7 +1085,7 @@ if (NOT onnxruntime_ENABLE_TRAINING_TORCH_INTEROP)
   endif()
   target_include_directories(onnxruntime_mlas_test PRIVATE ${ONNXRUNTIME_ROOT}/core/mlas/inc ${ONNXRUNTIME_ROOT}
           ${CMAKE_CURRENT_BINARY_DIR})
-  set(onnxruntime_mlas_test_libs GTest::gtest GTest::gmock onnxruntime_mlas onnxruntime_common)
+  set(onnxruntime_mlas_test_libs GTest::gtest GTest::gmock ${ONNXRUNTIME_MLAS_LIBS} onnxruntime_common)
   if(NOT WIN32)
     list(APPEND onnxruntime_mlas_test_libs nsync_cpp ${CMAKE_DL_LIBS})
   endif()
